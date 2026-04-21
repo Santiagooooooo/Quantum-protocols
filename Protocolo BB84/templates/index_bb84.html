@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protocolo BB84 - Distribución Cuántica de Claves</title>
+    <link rel="stylesheet" href="/static/style_bb84.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Protocolo BB84 - Distribución Cuántica de Claves</h1>
+            <p>Versión mejorada con 4 estados cuánticos | Eficiencia 50%</p>
+        </header>
+
+        <!-- Controles -->
+        <div class="controls">
+            <label for="n_bits">Número de bits a transmitir:</label>
+            <input type="number" id="n_bits" value="16" min="4" max="100">
+            
+            <!-- Toggle para espía -->
+            <div class="espia-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="espia_activo">
+                    <span class="slider"></span>
+                </label>
+                <span>🕵️ Activar Espía (Eve)</span>
+            </div>
+            
+            <button id="simular_btn">🚀 Iniciar BB84</button>
+        </div>
+
+        <!-- Panel del espía con camino en U -->
+        <div class="camino-u" id="camino_u" style="display: none;">
+            <h3>🕵️‍♂️ Canal cuántico con intercepción (Eve)</h3>
+            <div style="position: relative; height: 200px; margin: 20px 0;">
+                <svg width="100%" height="200" viewBox="0 0 1000 200" style="background: rgba(0,0,0,0.3); border-radius: 15px;">
+                    <!-- Línea horizontal superior izquierda -->
+                    <line x1="50" y1="30" x2="400" y2="30" stroke="#00ff88" stroke-width="4" stroke-dasharray="8,4" />
+                    <!-- Bajada -->
+                    <line x1="400" y1="30" x2="400" y2="150" stroke="#ff4444" stroke-width="4" stroke-dasharray="8,4" />
+                    <!-- Línea horizontal inferior (zona espía) -->
+                    <line x1="400" y1="150" x2="600" y2="150" stroke="#9c27b0" stroke-width="4" stroke-dasharray="8,4" />
+                    <!-- Subida -->
+                    <line x1="600" y1="150" x2="600" y2="30" stroke="#ff4444" stroke-width="4" stroke-dasharray="8,4" />
+                    <!-- Línea horizontal superior derecha -->
+                    <line x1="600" y1="30" x2="950" y2="30" stroke="#00ff88" stroke-width="4" stroke-dasharray="8,4" />
+                    
+                    <!-- Alice -->
+                    <rect x="10" y="10" width="60" height="40" rx="8" fill="#4CAF50" />
+                    <text x="40" y="35" text-anchor="middle" fill="white" font-size="12" font-weight="bold">ALICE</text>
+                    
+                    <!-- Bob -->
+                    <rect x="930" y="10" width="60" height="40" rx="8" fill="#2196F3" />
+                    <text x="960" y="35" text-anchor="middle" fill="white" font-size="12" font-weight="bold">BOB</text>
+                    
+                    <!-- Espía (abajo) -->
+                    <g id="espia_svg">
+                        <rect x="450" y="130" width="100" height="40" rx="8" fill="#9c27b0" />
+                        <text x="500" y="155" text-anchor="middle" fill="white" font-size="12" font-weight="bold">ESPÍA (EVE)</text>
+                    </g>
+                </svg>
+                <div id="foton_animado" style="position: absolute; top: 20px; left: 50px; width: 30px; height: 30px; border-radius: 50%; background: #ff4444; display: none; align-items: center; justify-content: center; color: white; font-size: 12px; box-shadow: 0 0 10px currentColor;">⚛️</div>
+            </div>
+            <div class="espia-bits" style="text-align: center;">
+                <h4 style="color: #e1bee7;">Bits interceptados por Eve:</h4>
+                <div id="espia_bits" class="bits-container" style="justify-content: center;"></div>
+            </div>
+        </div>
+
+        <!-- Sección 1: Cuadrados de bits -->
+        <div class="card" id="cadena_bits" style="display: none;">
+            <h2>📡 Transmisión Cuántica BB84</h2>
+            <h3>Alice - Bits enviados:</h3>
+            <div id="bits_alice" class="bits-container"></div>
+            <h3>Bob - Bases de medición:</h3>
+            <div id="bits_bob" class="bits-container"></div>
+        </div>
+
+        <!-- Alerta de espía -->
+        <div class="alerta-espia" id="alerta_espia" style="display: none;">
+            <div class="alerta-contenido">
+                <span class="alerta-icono">🚨</span>
+                <div class="alerta-texto">
+                    <strong>¡ESPÍA DETECTADA!</strong><br>
+                    Se ha detectado una intercepción en el canal cuántico.
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 2: Resultados -->
+        <div class="card" id="resultados" style="display: none;">
+            <h2>📊 Resultados de la Simulación</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span class="label">Bits enviados:</span>
+                    <span id="total_bits" class="value"></span>
+                </div>
+                <div class="stat">
+                    <span class="label">Clave generada:</span>
+                    <span id="key_length" class="value"></span>
+                </div>
+                <div class="stat">
+                    <span class="label">Tasa de éxito:</span>
+                    <span id="tasa_exito" class="value"></span>
+                </div>
+                <div class="stat" id="espia_stat" style="display: none;">
+                    <span class="label">Espía detectada:</span>
+                    <span id="espia_detectada" class="value"></span>
+                </div>
+            </div>
+
+            <div class="clave-box">
+                <h3>⚡ Clave Binaria Generada</h3>
+                <div class="clave-binaria" id="clave_binaria"></div>
+                <button id="copy_clave_btn" class="copy-btn-mini">📋 Copiar clave</button>
+            </div>
+
+            <div class="password-box">
+                <h3>🔑 Contraseña Generada</h3>
+                <div class="password-display">
+                    <span id="password" class="password"></span>
+                    <button id="copy_btn" class="copy-btn">📋 Copiar</button>
+                </div>
+            </div>
+
+            <div class="keys">
+                <div class="key-box">
+                    <h3>Clave de Alice:</h3>
+                    <div id="alice_key" class="key-bits"></div>
+                </div>
+                <div class="key-box">
+                    <h3>Clave de Bob:</h3>
+                    <div id="bob_key" class="key-bits"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 3: Cifrado -->
+        <div class="card" id="cifrado_section" style="display: none;">
+            <h2>✉️ Cifrar Mensaje</h2>
+            <div class="cifrado-input">
+                <textarea id="mensaje" rows="3" placeholder="Escribe tu mensaje secreto aquí..."></textarea>
+                <button id="cifrar_btn" class="cifrar-btn">🔒 Cifrar Mensaje</button>
+            </div>
+            <div id="resultado_cifrado" style="display: none;">
+                <div class="result-line">
+                    <strong>Mensaje cifrado:</strong>
+                    <span id="cifrado_msg" class="cifrado-text"></span>
+                    <button id="copy_cifrado_btn" class="copy-btn-mini">📋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 4: Descifrado -->
+        <div class="card" id="descifrado_section" style="display: none;">
+            <h2>🔓 Descifrar Mensaje</h2>
+            <div class="descifrado-input">
+                <input type="text" id="clave_descifrado" placeholder="Pega la clave binaria aquí">
+                <textarea id="mensaje_cifrado" rows="3" placeholder="Pega el mensaje cifrado aquí"></textarea>
+                <button id="descifrar_btn" class="descifrar-btn">🔓 Descifrar</button>
+            </div>
+            <div id="resultado_descifrado" style="display: none;">
+                <div class="result-line">
+                    <strong>Mensaje descifrado:</strong>
+                    <span id="descifrado_msg" class="descifrado-text"></span>
+                    <button id="copy_descifrado_btn" class="copy-btn-mini">📋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 5: Detalle -->
+        <div class="card" id="detalle" style="display: none;">
+            <h2>⚛️ Proceso Bit por Bit (BB84)</h2>
+            <div id="detalle_bits" class="detalle-bits"></div>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="legend-box">
+            <h3>🎨 Leyenda BB84:</h3>
+            <div class="legend">
+                <div class="legend-item"><div class="color-box" style="background: #4CAF50;"></div><span>Alice: |0⟩ (Base Z, bit 0)</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #2196F3;"></div><span>Alice: |1⟩ (Base Z, bit 1)</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #ff4444;"></div><span>Alice: |+⟩ (Base X, bit 0)</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #FF9800;"></div><span>Alice: |-⟩ (Base X, bit 1)</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #42a5f5;"></div><span>Bob: Base Z</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #ffa726;"></div><span>Bob: Base X</span></div>
+                <div class="legend-item"><div class="color-box" style="background: #9c27b0;"></div><span>Espía (Eve)</span></div>
+                <div class="legend-item"><div class="color-box success-bg"></div><span>✅ Bases coinciden → Bit válido</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script_bb84.js"></script>
+</body>
+</html> 
