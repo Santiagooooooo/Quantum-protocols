@@ -48,6 +48,4 @@ python "Protocolo EPR/app.py"
 
 After starting one of them, open the local Flask URL shown in the terminal, usually `http://127.0.0.1:5000`.
 
-## Purpose
 
-These simulations are designed as educational tools to help visualize how quantum protocols work, how measurement bases affect outcomes, and how secure keys can be established through quantum mechanics.
