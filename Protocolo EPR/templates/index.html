@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocolo EPR — QKD Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="root">
+
+  <!-- ── Header ── -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">Protocolo EPR — QKD</div>
+      <div class="hdr-sub">|Φ⁺⟩ = (|00⟩ + |11⟩) / √2 · Distribución cuántica de claves</div>
+    </div>
+    <span class="badge">Quantum Simulator</span>
+  </div>
+
+  <!-- ── Controls ── -->
+  <div class="ctrl-panel">
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label for="rN">Pares totales</label>
+        <input type="range" id="rN" min="100" max="5000" step="100" value="500"
+               oninput="document.getElementById('vN').textContent=this.value">
+        <span id="vN">500</span>
+      </div>
+      <div class="ctrl-item">
+        <label for="rT">Pares de prueba</label>
+        <input type="range" id="rT" min="50" max="1000" step="50" value="200"
+               oninput="document.getElementById('vT').textContent=this.value">
+        <span id="vT">200</span>
+      </div>
+    </div>
+    <div class="ctrl-row ctrl-row-bottom">
+      <!-- Umbral S: fijo, solo informativo -->
+      <div class="threshold-info">
+        <span class="threshold-label">Umbral S (Bell-CHSH)</span>
+        <span class="threshold-val">2.00</span>
+      </div>
+      <div class="ctrl-right">
+        <button class="eve-toggle" id="eveBtn" onclick="toggleEve()">
+          <svg viewBox="0 0 14 14" fill="none" width="14" height="14" style="flex-shrink:0">
+            <circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M2 11c0-2.2 2.2-4 5-4s5 1.8 5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Sin espía (Eve)
+        </button>
+        <button class="sim-btn" id="simBtn" onclick="runSim()">▶ Simular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step tabs ── -->
+  <div class="step-tabs">
+    <button class="step-tab active" onclick="showTab(0)" id="tab0">① Pares EPR</button>
+    <button class="step-tab" onclick="showTab(1)" id="tab1" disabled>② Mediciones</button>
+    <button class="step-tab" onclick="showTab(2)" id="tab2" disabled>③ Correlaciones</button>
+    <button class="step-tab" onclick="showTab(3)" id="tab3" disabled>④ Decisión y clave</button>
+    <button class="step-tab" onclick="showTab(4)" id="tab4" disabled>⑤ Circuito</button>
+  </div>
+
+  <!-- ══ Panel 0: Pairs ══ -->
+  <div class="step-panel active" id="panel0">
+    <div class="section-label">Estado inicial — pares entrelazados</div>
+
+    <div class="legend">
+      <div class="leg-item">
+        <svg width="28" height="18" viewBox="0 0 28 18">
+          <circle cx="9" cy="9" r="7" fill="#5DCAA5" fill-opacity=".2" stroke="#5DCAA5" stroke-width="1.5"/>
+          <circle cx="19" cy="9" r="7" fill="#5DCAA5" fill-opacity=".2" stroke="#5DCAA5" stroke-width="1.5"/>
+        </svg>
+        Par entrelazado |Φ⁺⟩
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="18" viewBox="0 0 28 18">
+          <circle cx="9" cy="9" r="7" fill="#378ADD" fill-opacity=".25" stroke="#378ADD" stroke-width="1.5"/>
+          <circle cx="19" cy="9" r="7" fill="#378ADD" fill-opacity=".25" stroke="#378ADD" stroke-width="1.5"/>
+        </svg>
+        Usado en prueba de correlación
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="18" viewBox="0 0 28 18">
+          <circle cx="9" cy="9" r="7" fill="#639922" fill-opacity=".2" stroke="#639922" stroke-width="1.5"/>
+          <circle cx="19" cy="9" r="7" fill="#639922" fill-opacity=".2" stroke="#639922" stroke-width="1.5"/>
+        </svg>
+        Reservado para clave
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="18" viewBox="0 0 28 18">
+          <circle cx="9" cy="9" r="7" fill="#E24B4A" fill-opacity=".2" stroke="#E24B4A" stroke-width="1.5"/>
+          <circle cx="19" cy="9" r="7" fill="#E24B4A" fill-opacity=".2" stroke="#E24B4A" stroke-width="1.5"/>
+        </svg>
+        Interceptado por Eve
+      </div>
+    </div>
+
+    <div class="pairs-grid" id="pairsGrid">
+      <p class="placeholder-msg">Ejecuta la simulación para ver los pares EPR.</p>
+    </div>
+
+    <div class="channel-wrap">
+      <svg id="channelSvg" width="640" height="90" viewBox="0 0 640 90">
+        <text font-size="11" fill="#9c9a92" x="320" y="48" text-anchor="middle"
+              font-family="JetBrains Mono,monospace">Canal cuántico · ejecuta la simulación</text>
+      </svg>
+    </div>
+    <button class="next-btn" onclick="showTab(1)" id="nextToMeas" disabled>Ir a mediciones →</button>
+  </div>
+
+  <!-- ══ Panel 1: Measurements ══ -->
+  <div class="step-panel" id="panel1">
+    <div class="section-label">Esfera de Bloch — primeros qubits medidos</div>
+    <div class="bloch-row" id="blochRow">
+      <div class="bloch-card" id="aliceBlochCard">
+        <div class="bloch-label" id="aliceBlochLabel">Alice</div>
+        <svg id="aliceBlochSvg" width="200" height="200" viewBox="0 0 200 200"></svg>
+      </div>
+      <div class="bloch-card" id="bobBlochCard">
+        <div class="bloch-label" id="bobBlochLabel">Bob</div>
+        <svg id="bobBlochSvg" width="200" height="200" viewBox="0 0 200 200"></svg>
+      </div>
+    </div>
+
+    <!-- Controles y nota FUERA del bloch-row -->
+    <div class="carousel-controls" style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 20px;">
+      <button id="prevPairBtn" class="filter-btn">◀ Anterior</button>
+      <span style="font-family: 'JetBrains Mono'; font-size: 12px;">
+        Par <span id="currentPairIdx">1</span> de <span id="totalPairsCount">0</span>
+      </span>
+      <button id="nextPairBtn" class="filter-btn">Siguiente ▶</button>
+    </div>
+    <input type="range" id="pairSlider" min="1" max="1" value="1" style="width: 80%; margin-top: 12px; display: block; margin-left: auto; margin-right: auto;">
+
+    <div id="entanglementNote"></div>
+    <!-- Eve alert -->
+    <div id="eveAlert" style="display:none" class="eve-alert"></div>
+
+    <div class="section-label" style="margin-top:1.25rem">
+      Todas las mediciones de prueba
+      <span id="measCount" style="font-size:9px;margin-left:8px"></span>
+    </div>
+
+    <!-- Filtros -->
+    <div class="meas-filters" id="measFilters" style="display:none">
+      <button class="filter-btn active" onclick="setFilter('all',this)">Todas</button>
+      <button class="filter-btn" onclick="setFilter('same_base',this)">Misma base</button>
+      <button class="filter-btn" onclick="setFilter('diff_base',this)">Bases distintas</button>
+      <button class="filter-btn" onclick="setFilter('eve_error',this)" id="filterEve" style="display:none">
+        Errores de Eve
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="meas-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Base Alice</th>
+            <th>Base Bob</th>
+            <th>Res. Alice</th>
+            <th>Res. Bob</th>
+            <th>¿Coinciden?</th>
+            <th>Nota</th>
+          </tr>
+        </thead>
+        <tbody id="measBody">
+          <tr><td colspan="7" class="placeholder-msg">Ejecuta la simulación primero.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="next-btn" onclick="showTab(2)">Ir a correlaciones →</button>
+  </div>
+
+  <!-- ══ Panel 2: Correlations ══ -->
+  <div class="step-panel" id="panel2">
+    <div class="section-label">Correlaciones por combinación de bases (CHSH)</div>
+    <div class="corr-grid" id="corrGrid">
+      <p class="placeholder-msg">Ejecuta la simulación primero.</p>
+    </div>
+
+    <div class="s-display">
+      <div class="s-val" id="sVal">—</div>
+      <div class="s-formula">
+        <strong>S = E(ZZ) + E(XX) − E(ZX) − E(XZ)</strong><br>
+        Límite clásico (variables ocultas): S ≤ 2.0<br>
+        Máximo cuántico (estado |Φ⁺⟩): S = 2√2 ≈ 2.828<br>
+        Umbral de seguridad usado: <strong>1.90</strong>
+      </div>
+    </div>
+
+    <div class="s-gauge-bg">
+      <div id="sGaugeBar" class="s-gauge-fill"></div>
+      <div class="s-gauge-marker" title="Umbral 1.90"></div>
+      <div class="s-gauge-marker2" title="Límite clásico 2.0"></div>
+    </div>
+    <div class="s-gauge-labels">
+      <span>0</span><span>1</span>
+      <span style="color:#A32D2D">1.90 (umbral)</span>
+      <span style="color:#6b6b68">2.0 (clásico)</span>
+      <span>2.83</span>
+    </div>
+
+    <button class="next-btn" onclick="showTab(3)">Ir a decisión →</button>
+  </div>
+
+  <!-- ══ Panel 3: Decision & key ══ -->
+  <div class="step-panel" id="panel3">
+    <div class="section-label">Decisión de seguridad</div>
+    <div id="verdictArea" class="placeholder-msg">Ejecuta la simulación primero.</div>
+    <!-- Dentro del panel 3, después de <div id="verdictArea"> -->
+    <div id="keyGenArea" style="display:none; margin-top: 1rem;">
+      <div class="section-label">Generar clave con base común</div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span>Base:</span>
+        <button id="baseZBtn" class="filter-btn">Base Z</button>
+        <button id="baseXBtn" class="filter-btn">Base X</button>
+        <button id="genKeyBtn" class="sim-btn" style="background:#1D9E75;">Generar clave</button>
+      </div>
+      <div id="dynamicKey" style="margin-top: 1rem;">
+        <div class="section-label" style="display:none">Clave generada</div>
+        <div class="key-grid" id="dynamicKeyGrid"></div>
+        <div class="key-meta" id="dynamicKeyMeta"></div>
+      </div>
+    </div>
+    <div class="section-label" id="keyLabel" style="display:none">Clave generada (primeros 50 bits)</div>
+    <div class="key-grid" id="keyGrid"></div>
+    <div class="key-meta" id="keyMeta"></div>
+  </div>
+  <!-- ══ Panel 4: Circuito ══ -->
+  <div class="step-panel" id="panel4">
+    <div class="section-label">Circuito EPR — Flujo de comunicación</div>
+    <div class="circuit-container" id="circuitContainer">
+      <div class="circuit-col">
+        <div class="circuit-card">
+          <div class="circuit-title">
+            Fuente EPR
+            <span class="info-dot" tabindex="0" role="button" aria-label="Más información sobre el estado Phi positivo" title="La fuente prepara |Φ⁺⟩ aplicando H y luego una CNOT." data-tip="La fuente prepara |Φ⁺⟩ aplicando H al primer qubit y luego una CNOT. Así se genera un par maximamente entrelazado.">i</span>
+          </div>
+          <div class="source-hero">
+            <div class="source-chip">H + CNOT</div>
+            <div class="epr-pair" aria-label="Par EPR entrelazado">
+              <div class="qubit qubit-a">A</div>
+              <div class="qubit qubit-b">B</div>
+              <div class="entangle-line"></div>
+              <div class="entangle-wave" aria-hidden="true">∞</div>
+            </div>
+            <div class="state-badge">|Φ⁺⟩</div>
+            <div class="state-label">(|00⟩ + |11⟩) / √2</div>
+          </div>
+          <div class="source-note">Dos qubits comparten correlaciones cuánticas antes de ser medidos por Alice y Bob.</div>
+        </div>
+      </div>
+      <div class="circuit-col">
+        <div class="circuit-card">
+          <div class="circuit-title">Canal cuántico</div>
+          <div class="channel-status-row">
+            <div class="channel-pill" id="channelStatus">Esperando simulación</div>
+            <div class="security-pill neutral" id="circuitSecurity">Pendiente</div>
+          </div>
+          <div class="channel-visual" id="channelVisual" aria-live="polite">
+            <div class="channel-line"></div>
+            <div class="channel-noise" id="channelNoise" aria-hidden="true"></div>
+            <div class="photon-trail" id="photonTrail" aria-hidden="true"></div>
+            <div class="photon" id="photon"></div>
+            <div class="eve-avatar" id="eveAvatar" tabindex="0" role="img" aria-label="Eve interceptando el canal" title="Eve intercepta, mide y reenvía el qubit." data-tip="Eve intercepta, mide y reenvía. Esa medición perturba el estado y puede revelar espionaje en el test de Bell.">◉</div>
+          </div>
+          <div id="eveIndicator" class="eve-indicator" style="display:none;">⚠ Eve interceptando y perturbando el canal</div>
+          <div class="channel-caption" id="channelCaption">El fotón recorrerá el canal al abrir este panel.</div>
+        </div>
+      </div>
+      <div class="circuit-col">
+        <div class="circuit-card">
+          <div class="circuit-title">Medición</div>
+          <div class="measure-toolbar">
+            <button class="mini-nav-btn" id="circuitPrevPair" type="button" aria-label="Par anterior">←</button>
+            <label class="sr-only" for="circuitPairSelect">Seleccionar par de prueba</label>
+            <select id="circuitPairSelect" class="pair-select" aria-label="Seleccionar par de prueba"></select>
+            <button class="mini-nav-btn" id="circuitNextPair" type="button" aria-label="Par siguiente">→</button>
+          </div>
+          <div class="measurement-pulse" id="measurementPulse" aria-hidden="true">
+            <span class="pulse-dot"></span>
+            <span id="measurementPulseText">Listo para medir</span>
+          </div>
+          <div class="alice-bob">
+            <div class="person-card">
+              <strong>Alice</strong>
+              <div id="aliceLastBase" class="info">Base: —</div>
+              <div id="aliceLastResult" class="info">Resultado: —</div>
+            </div>
+            <div class="person-card">
+              <strong>Bob</strong>
+              <div id="bobLastBase" class="info">Base: —</div>
+              <div id="bobLastResult" class="info">Resultado: —</div>
+            </div>
+          </div>
+          <div class="measurement-summary">
+            <div class="summary-pill" id="pairTypePill">Par: —</div>
+            <div class="summary-pill" id="correlationPill">Correlación: —</div>
+          </div>
+          <div class="bit-progress-card">
+            <div class="bit-progress-head">
+              <span>Clave generada</span>
+              <button id="exportKeyBtn" class="export-btn" type="button" disabled>Exportar clave</button>
+            </div>
+            <div class="key-progress-bar" aria-label="Progreso de bits generados">
+              <div class="key-progress-fill" id="keyProgressFill"></div>
+            </div>
+            <div class="key-progress-meta" id="keyProgressMeta">0 bits disponibles</div>
+            <div id="circuitKeyBits" class="key-bits-mini" title="Haz clic para copiar los bits visibles">Clave no generada</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="circuit-stats" id="circuitStats">
+      <div class="stat-item">Pares de prueba: <span id="statTestPairs">0</span></div>
+      <div class="stat-item">Misma base: <span id="statSameBase">0</span></div>
+      <div class="stat-item">Errores de Eve: <span id="statEveErrors">0</span></div>
+      <div class="stat-item">Bits de clave: <span id="statKeyBits">0</span></div>
+      <div class="stat-item bell-stat">
+        <span class="bell-label">Bell S</span>
+        <span class="bell-ring" id="circuitBellRing"><span id="circuitBellValue">0.0000</span></span>
+      </div>
+    </div>
+    <button class="next-btn" onclick="showTab(3)">← Volver a decisión</button>
+  </div>
+
+</div><!-- .root -->
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
